@@ -11,7 +11,8 @@ remappings = [
 allow_paths = ["../aqua", "../../node_modules"]
 fs_permissions = [
     { access = "read", path = "../aqua" },
-    { access = "read", path = "../../node_modules" }
+    { access = "read", path = "../../node_modules" },
+    { access = "read-write", path = "./script" }
 ]
 via_ir = true
 optimizer = true

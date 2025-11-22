@@ -1,6 +1,12 @@
 # Aqua Trading Strategies
 
-This package contains two distinct trading strategies implemented as Aqua Apps, demonstrating different AMM formulas and use cases.
+This package contains two production-ready trading strategies implemented as Aqua Apps, with complete testnet deployment scripts for Base Sepolia.
+
+## 🚀 Quick Start
+
+**Want to test on Base Sepolia?** See [QUICKSTART.md](./QUICKSTART.md) for a step-by-step guide using your existing AquaRouter.
+
+**Full deployment details?** See [DEPLOYMENT_SUMMARY.md](./DEPLOYMENT_SUMMARY.md) for architecture and integration info.
 
 ## Strategies Implemented
 
