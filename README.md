@@ -1,81 +1,160 @@
-# Vibe Maxing
+# Vibe Maxing - Monorepo
 
-An interactive web experience built for ETH Global Hackathon.
+A modern monorepo setup for the Vibe Maxing project using pnpm workspaces.
 
-## Tech Stack
+## 📁 Project Structure
 
-- React 18 with TypeScript
-- Vite for blazing fast development
-- Tailwind CSS for styling
-- shadcn-ui components
+```
+vibe-maxing/
+├── packages/
+│   ├── frontend/          # React + Vite frontend application
+│   │   ├── src/
+│   │   ├── public/
+│   │   ├── package.json
+│   │   └── vite.config.ts
+│   └── supabase/          # Supabase backend configuration
+│       ├── config.toml
+│       ├── functions/
+│       ├── migrations/
+│       └── package.json
+├── package.json           # Root workspace configuration
+├── pnpm-workspace.yaml    # Workspace definition
+└── README.md
+```
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ and pnpm (recommended) or npm
+- Node.js >= 18.0.0
+- pnpm >= 8.0.0
 
 ### Installation
 
-```sh
-# Clone the repository
-git clone <YOUR_GIT_URL>
-cd <YOUR_PROJECT_NAME>
+Install pnpm globally if you haven't already:
 
-# Install dependencies with pnpm (recommended)
+```bash
+npm install -g pnpm
+```
+
+Install all dependencies:
+
+```bash
 pnpm install
+```
 
-# Or with npm
-npm install
+## 📦 Available Scripts
 
+### Root Level Commands
+
+```bash
 # Start development server
 pnpm dev
-# Or: npm run dev
-```
 
-The app will be available at `http://localhost:8080`
-
-## Available Scripts
-
-- `pnpm dev` - Start development server
-- `pnpm build` - Build for production
-- `pnpm preview` - Preview production build locally
-- `pnpm lint` - Run ESLint
-
-## PNPM Monorepo Compatibility
-
-This project is fully compatible with PNPM monorepos. The workspace uses:
-- Shared dependencies via PNPM workspace protocol
-- Hoisted node_modules for optimal disk usage
-- Fast, deterministic installs with proper peer dependency handling
-
-To use in a monorepo, add this to your root `pnpm-workspace.yaml`:
-```yaml
-packages:
-  - 'packages/*'
-  - 'apps/*'
-```
-
-## Project Structure
-
-```
-src/
-├── components/     # React components
-├── pages/          # Page components
-├── hooks/          # Custom React hooks
-├── lib/            # Utilities
-└── index.css       # Global styles & design tokens
-```
-
-## Deployment
-
-Build the project for production:
-```sh
+# Build for production
 pnpm build
+
+# Build for development
+pnpm build:dev
+
+# Run linter
+pnpm lint
+
+# Preview production build
+pnpm preview
+
+# Clean all node_modules and build artifacts
+pnpm clean
 ```
 
-The `dist` folder will contain the production-ready static files.
+### Package-Specific Commands
 
-## License
+Run commands in specific packages:
 
-MIT
+```bash
+# Frontend
+pnpm --filter frontend dev
+pnpm --filter frontend build
+
+# Supabase
+pnpm --filter supabase start
+pnpm --filter supabase stop
+pnpm --filter supabase status
+```
+
+## 🏗️ Workspace Management
+
+This monorepo uses pnpm workspaces for package management. All packages are defined in `pnpm-workspace.yaml`.
+
+### Adding Dependencies
+
+```bash
+# Add to root workspace
+pnpm add -w <package-name>
+
+# Add to specific package
+pnpm --filter frontend add <package-name>
+pnpm --filter supabase add <package-name>
+
+# Add dev dependency
+pnpm --filter frontend add -D <package-name>
+```
+
+### Running Commands Across All Packages
+
+```bash
+# Run a script in all packages
+pnpm -r <script-name>
+
+# Run in parallel
+pnpm -r --parallel <script-name>
+```
+
+## 📝 Package Details
+
+### Frontend (`packages/frontend`)
+
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **UI Components**: Radix UI + Tailwind CSS
+- **State Management**: TanStack Query
+- **Routing**: React Router DOM
+
+### Supabase (`packages/supabase`)
+
+- **Database**: PostgreSQL
+- **Functions**: Edge Functions
+- **Migrations**: SQL migrations
+
+## 🔧 Development Workflow
+
+1. **Start Development**:
+   ```bash
+   pnpm dev
+   ```
+
+2. **Make Changes**: Edit files in the respective packages
+
+3. **Build**:
+   ```bash
+   pnpm build
+   ```
+
+4. **Deploy**: Follow deployment instructions for each package
+
+## 📚 Additional Resources
+
+- [pnpm Workspaces Documentation](https://pnpm.io/workspaces)
+- [Vite Documentation](https://vitejs.dev/)
+- [Supabase Documentation](https://supabase.com/docs)
+
+## 🤝 Contributing
+
+1. Create a new branch
+2. Make your changes
+3. Test thoroughly
+4. Submit a pull request
+
+## 📄 License
+
+This project is private and proprietary.

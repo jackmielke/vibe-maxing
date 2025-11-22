@@ -1,0 +1,19 @@
+{
+  "name": "supabase",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Supabase backend configuration and functions",
+  "scripts": {
+    "start": "supabase start",
+    "stop": "supabase stop",
+    "status": "supabase status",
+    "db:reset": "supabase db reset",
+    "db:push": "supabase db push",
+    "functions:serve": "supabase functions serve",
+    "functions:deploy": "supabase functions deploy"
+  },
+  "devDependencies": {
+    "supabase": "^1.200.3"
+  }
+}
+
