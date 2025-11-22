@@ -10,7 +10,7 @@ import {StableswapAMM} from "../src/StableswapAMM.sol";
 /// @notice Sets up a Stableswap strategy with USDC/USDT pair
 contract SetupStableswap is Script {
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
         address deployer = vm.addr(deployerPrivateKey);
 
         // Load deployed addresses

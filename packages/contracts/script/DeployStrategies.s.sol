@@ -3,31 +3,32 @@ pragma solidity 0.8.30;
 
 import "forge-std/Script.sol";
 import {Aqua} from "aqua/Aqua.sol";
+import {IAqua} from "aqua/interfaces/IAqua.sol";
 import {ConcentratedLiquiditySwap} from "../src/ConcentratedLiquiditySwap.sol";
 import {StableswapAMM} from "../src/StableswapAMM.sol";
 
 /// @title DeployStrategies
-/// @notice Deploys Aqua protocol and trading strategies
+/// @notice Deploys trading strategies using existing AquaRouter
+/// @dev Requires AQUA_ROUTER env variable to be set
 contract DeployStrategies is Script {
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
         address deployer = vm.addr(deployerPrivateKey);
 
-        console.log("Deploying Aqua and Strategies...");
+        console.log("Deploying Strategies...");
         console.log("Deployer:", deployer);
+
+        // Use existing AquaRouter (required)
+        address aquaAddress = vm.envAddress("AQUA_ROUTER");
+        console.log("Using existing AquaRouter at:", aquaAddress);
+
+        IAqua aqua = IAqua(aquaAddress);
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // Deploy Aqua core protocol
-        Aqua aqua = new Aqua();
-        console.log("Aqua deployed at:", address(aqua));
-
         // Deploy ConcentratedLiquiditySwap strategy
         ConcentratedLiquiditySwap clSwap = new ConcentratedLiquiditySwap(aqua);
-        console.log(
-            "ConcentratedLiquiditySwap deployed at:",
-            address(clSwap)
-        );
+        console.log("ConcentratedLiquiditySwap deployed at:", address(clSwap));
 
         // Deploy StableswapAMM strategy
         StableswapAMM stableswap = new StableswapAMM(aqua);
@@ -38,7 +39,7 @@ contract DeployStrategies is Script {
         // Save addresses to file
         string memory output = string.concat(
             "AQUA=",
-            vm.toString(address(aqua)),
+            vm.toString(aquaAddress),
             "\n",
             "CONCENTRATED_LIQUIDITY=",
             vm.toString(address(clSwap)),
@@ -52,4 +53,3 @@ contract DeployStrategies is Script {
         console.log("\nAddresses saved to script/deployed-strategies.txt");
     }
 }
-

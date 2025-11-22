@@ -10,7 +10,7 @@ import {ConcentratedLiquiditySwap} from "../src/ConcentratedLiquiditySwap.sol";
 /// @notice Sets up a ConcentratedLiquidity strategy with USDC/WETH pair
 contract SetupConcentratedLiquidity is Script {
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
         address deployer = vm.addr(deployerPrivateKey);
 
         // Load deployed addresses

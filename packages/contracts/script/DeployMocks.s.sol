@@ -29,7 +29,7 @@ contract MockToken is ERC20 {
 /// @notice Deploys mock tokens (USDC, USDT, ETH) for testnet testing
 contract DeployMocks is Script {
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
         address deployer = vm.addr(deployerPrivateKey);
 
         console.log("Deploying mock tokens...");

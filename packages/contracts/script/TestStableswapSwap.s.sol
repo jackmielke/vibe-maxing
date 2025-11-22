@@ -60,7 +60,7 @@ contract StableSwapper is IStableswapCallback {
 /// @notice Tests swapping on Stableswap strategy
 contract TestStableswapSwap is Script {
     function run() external {
-        uint256 traderPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 traderPrivateKey = vm.envUint("DEPLOYER_KEY");
         address trader = vm.addr(traderPrivateKey);
 
         // Load deployed addresses
