@@ -14,7 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      users: {
+        Row: {
+          created_at: string | null
+          id: string
+          telegram_first_name: string | null
+          telegram_id: number
+          telegram_last_name: string | null
+          telegram_username: string | null
+          updated_at: string | null
+          wallet_address: string | null
+          wallet_provider: string | null
+          world_id_nullifier_hash: string | null
+          world_id_verified: boolean | null
+          world_id_verified_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          telegram_first_name?: string | null
+          telegram_id: number
+          telegram_last_name?: string | null
+          telegram_username?: string | null
+          updated_at?: string | null
+          wallet_address?: string | null
+          wallet_provider?: string | null
+          world_id_nullifier_hash?: string | null
+          world_id_verified?: boolean | null
+          world_id_verified_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          telegram_first_name?: string | null
+          telegram_id?: number
+          telegram_last_name?: string | null
+          telegram_username?: string | null
+          updated_at?: string | null
+          wallet_address?: string | null
+          wallet_provider?: string | null
+          world_id_nullifier_hash?: string | null
+          world_id_verified?: boolean | null
+          world_id_verified_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
