@@ -220,10 +220,10 @@ else
     # Set swap amount (default 1 USDC)
     export SWAP_AMOUNT=${SWAP_AMOUNT:-1000000}
     
-    forge script script/TestStableswapSwap.s.sol:TestStableswapSwap \
-      --rpc-url $RPC_URL \
-      --broadcast \
-      --legacy
+forge script script/TestStableswapSwap.s.sol:TestStableswapSwap \
+  --rpc-url $RPC_URL \
+  --broadcast \
+  --legacy
     echo -e "${GREEN}✓ Swap test complete${NC}"
 fi
 echo ""
