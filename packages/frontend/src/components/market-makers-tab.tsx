@@ -3,6 +3,7 @@ import { useState } from "react"
 import { Plus, TrendingUp, ArrowRight, Droplet, Wallet, Layers, X, Waves, Target, ArrowLeftRight, ChevronLeft, ExternalLink, CheckCircle } from "lucide-react"
 import { StrategyDetail } from "./strategy-detail"
 import { DotLoader } from "./ui/dot-loader"
+import { shipStrategyToChain, TOKENS } from "@/lib/shipStrategy"
 
 interface Strategy {
   id: string
@@ -82,19 +83,48 @@ export function MarketMakersTab() {
         return
       }
 
-      // Start processing
-      setIsProcessing(true)
+      try {
+        // Start processing
+        setIsProcessing(true)
 
-      // Simulate transaction processing (20 seconds)
-      await new Promise(resolve => setTimeout(resolve, 20000))
+        // Convert fee percentage to basis points (e.g., 0.30% = 30 bps)
+        const feeBps = Math.round(numValue * 100)
 
-      // Generate mock transaction hash
-      const mockTxHash = "0x" + Array.from({length: 64}, () =>
-        Math.floor(Math.random() * 16).toString(16)
-      ).join("")
+        // Get token addresses
+        const token0Address = TOKENS[tokenFrom as keyof typeof TOKENS] || TOKENS.USDC
+        const token1Address = TOKENS[tokenTo as keyof typeof TOKENS] || TOKENS.USDT
 
-      setTxHash(mockTxHash)
-      setIsProcessing(false)
+        console.log('Shipping strategy with params:', {
+          feeBps,
+          token0: tokenFrom,
+          token0Address,
+          token1: tokenTo,
+          token1Address,
+        })
+
+        // Call the actual shipStrategyToChain function
+        const result = await shipStrategyToChain({
+          strategyType: selectedType, // 'stableswap' or 'concentrated'
+          feeBps,
+          token0: token0Address,
+          token1: token1Address,
+        })
+
+        if (result.success && result.txHash) {
+          setTxHash(result.txHash)
+        } else {
+          throw new Error('Transaction failed')
+        }
+      } catch (error) {
+        console.error('Error creating strategy:', error)
+        console.error('Error type:', typeof error)
+        console.error('Error constructor:', error?.constructor?.name)
+        console.error('Error message:', error instanceof Error ? error.message : JSON.stringify(error))
+        console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+        setFeeError(error instanceof Error ? error.message : 'Failed to create strategy. Check console for details.')
+      } finally {
+        setIsProcessing(false)
+      }
     }
 
     const handleBackToList = () => {

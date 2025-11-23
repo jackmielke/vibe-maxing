@@ -31,12 +31,32 @@ export default function WorldIDAuth({ onSuccess, onError }: WorldIDAuthProps) {
         const payload = result.finalPayload as ISuccessResult
         console.log('✅ Verification successful!', payload)
 
+        // Get wallet address after verification
+        let walletAddress = null
+        try {
+          const walletAuth = await MiniKit.commandsAsync.walletAuth({
+            nonce: Date.now().toString(),
+            requestId: Date.now().toString(),
+            expirationTime: new Date(Date.now() + 5 * 60 * 1000),
+            notBefore: new Date(Date.now()),
+            statement: 'Authenticate your wallet for Aqua0',
+          })
+
+          if (walletAuth.finalPayload && (walletAuth.finalPayload as any).status === 'success') {
+            walletAddress = (walletAuth.finalPayload as any).address
+            console.log('Wallet address:', walletAddress)
+          }
+        } catch (err) {
+          console.warn('Could not get wallet address:', err)
+        }
+
         // Guardar en localStorage
         localStorage.setItem(
           'worldid_auth',
           JSON.stringify({
             verified: true,
             nullifier_hash: payload.nullifier_hash,
+            wallet_address: walletAddress,
           })
         )
 
