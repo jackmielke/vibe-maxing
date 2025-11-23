@@ -52,6 +52,60 @@ const App = () => {
     return () => clearTimeout(timer)
   }, [])
 
+  // Show login screen if not verified
+  if (!isVerified) {
+    return (
+      <MiniKitProvider>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black space-bg p-6">
+              <div className="max-w-md w-full space-y-8 animate-in fade-in zoom-in duration-700">
+                {/* Logo and Title */}
+                <div className="text-center space-y-4">
+                  <div className="w-24 h-24 mx-auto border-4 border-white bg-black flex items-center justify-center rounded-lg">
+                    <img
+                      src="/aqua0-logo.png"
+                      alt="Aqua0 Logo"
+                      className="w-16 h-16 object-contain invert"
+                    />
+                  </div>
+                  <h1 className="text-5xl font-bold tracking-tighter text-white uppercase">AQUA0</h1>
+                  <p className="text-gray-400 font-mono text-sm">Cross-Chain Liquidity Protocol</p>
+                </div>
+
+                {/* Auth Card */}
+                <div className="neo-card p-8 space-y-6">
+                  <div className="text-center space-y-2">
+                    <h2 className="text-2xl font-bold text-white uppercase tracking-tight">Welcome</h2>
+                    <p className="text-sm text-gray-400">Verify your humanity to access the protocol</p>
+                  </div>
+
+                  <WorldIDAuth
+                    onSuccess={(nullifierHash) => {
+                      console.log('Verified!', nullifierHash)
+                      setIsVerified(true)
+                    }}
+                    onError={(error) => {
+                      console.error('Verification failed:', error)
+                    }}
+                  />
+
+                  <div className="pt-4 border-t-2 border-white/10">
+                    <p className="text-xs text-gray-500 text-center font-mono">
+                      You need World ID verification to continue
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </TooltipProvider>
+        </QueryClientProvider>
+      </MiniKitProvider>
+    )
+  }
+
   if (showSplash) {
     return (
       <MiniKitProvider>
@@ -177,7 +231,7 @@ const App = () => {
                     different blockchains simultaneously.
                   </p>
 
-                  <div className="flex flex-col md:flex-row gap-4 mb-8">
+                  <div className="flex flex-col md:flex-row gap-4">
                     <button
                       onClick={() => setActiveTab("market-makers")}
                       className="bg-white text-black border-2 border-white px-8 py-4 text-lg font-bold uppercase tracking-wider shadow-[6px_6px_0px_0px_#333] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#333] transition-all"
@@ -187,28 +241,6 @@ const App = () => {
                     <button className="bg-transparent text-white border-2 border-white px-8 py-4 text-lg font-bold uppercase tracking-wider hover:bg-white hover:text-black transition-colors">
                       Read Docs
                     </button>
-                  </div>
-
-                  {/* World ID Auth Section */}
-                  <div className="p-6 neo-card inline-block">
-                    <div className="mb-4">
-                      <h3 className="text-xl font-bold text-white mb-2">Connect with World ID</h3>
-                      <p className="text-sm text-gray-400">Verify your humanity to access the protocol</p>
-                    </div>
-                    <WorldIDAuth
-                      onSuccess={(nullifierHash) => {
-                        console.log('Verified!', nullifierHash)
-                        setIsVerified(true)
-                      }}
-                      onError={(error) => {
-                        console.error('Verification failed:', error)
-                      }}
-                    />
-                    {isVerified && (
-                      <div className="mt-4 p-3 bg-green-950 border-2 border-green-500 rounded text-green-200 text-sm font-mono">
-                        ✓ Verified with World ID
-                      </div>
-                    )}
                   </div>
                 </section>
 

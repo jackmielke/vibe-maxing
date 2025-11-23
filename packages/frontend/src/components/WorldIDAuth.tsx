@@ -17,13 +17,19 @@ export default function WorldIDAuth({ onSuccess, onError }: WorldIDAuthProps) {
     setError(null)
 
     try {
+      console.log('🔐 Starting World ID verification...')
+
       const result = await MiniKit.commandsAsync.verify({
         action: 'login',
         verification_level: VerificationLevel.Orb,
       })
 
-      if (result.status === 'success') {
+      console.log('📝 Verification result:', result)
+
+      // Check if finalPayload has success status
+      if (result.finalPayload && (result.finalPayload as any).status === 'success') {
         const payload = result.finalPayload as ISuccessResult
+        console.log('✅ Verification successful!', payload)
 
         // Guardar en localStorage
         localStorage.setItem(
@@ -46,13 +52,15 @@ export default function WorldIDAuth({ onSuccess, onError }: WorldIDAuthProps) {
           onSuccess(payload.nullifier_hash)
         }
       } else {
-        const errorMessage = 'Verification failed or was cancelled'
+        console.error('❌ Verification failed:', result)
+        const errorMessage = `Verification ${result.status}: ${JSON.stringify(result)}`
         setError(errorMessage)
         if (onError) {
           onError(errorMessage)
         }
       }
     } catch (err) {
+      console.error('💥 Error during verification:', err)
       const errorMessage = err instanceof Error ? err.message : 'An error occurred during verification'
       setError(errorMessage)
       if (onError) {
