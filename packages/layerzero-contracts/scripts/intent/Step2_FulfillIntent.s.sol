@@ -6,7 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title Step2_FulfillIntent
- * @notice LP fulfills a trader's intent by locking USDT
+ * @notice LP fulfills a trader's intent by locking rUSD
  * 
  * Usage:
  * forge script scripts/intent/Step2_FulfillIntent.s.sol:Step2_FulfillIntent --broadcast --rpc-url $WORLD_RPC
@@ -15,14 +15,14 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * - LP_PRIVATE_KEY
  * - INTENT_POOL_ADDRESS
  * - INTENT_ID
- * - USDT_ADDRESS (World Chain)
+ * - rUSD_ADDRESS (World Chain)
  */
 contract Step2_FulfillIntent is Script {
     function run() external {
         uint256 lpPk = vm.envUint("LP_PRIVATE_KEY");
         address intentPool = vm.envAddress("INTENT_POOL_ADDRESS");
         bytes32 intentId = vm.envBytes32("INTENT_ID");
-        address usdt = vm.envAddress("USDT_ADDRESS");
+        address rusd = vm.envAddress("rUSD_ADDRESS");
         
         address lp = vm.addr(lpPk);
 
@@ -64,12 +64,12 @@ contract Step2_FulfillIntent is Script {
 
         console.log("Trader:", trader);
         console.log("LP (expected):", lpAddress);
-        console.log("Amount In (USDC):", amountIn);
-        console.log("Expected Out (USDT):", expectedOut);
+        console.log("Amount In (USDT):", amountIn);
+        console.log("Expected Out (rUSD):", expectedOut);
 
-        // Approve USDT to IntentPool
-        IERC20(usdt).approve(intentPool, expectedOut);
-        console.log("USDT approved:", expectedOut);
+        // Approve rUSD to IntentPool
+        IERC20(rusd).approve(intentPool, expectedOut);
+        console.log("rUSD approved:", expectedOut);
 
         // Fulfill intent
         (bool fulfillSuccess, ) = intentPool.call(

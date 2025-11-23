@@ -71,14 +71,14 @@ contract Step3_SettleIntent is Script {
         console.log("Then: Monitor CrossChainSwapComposer events on Base");
         console.log("");
         console.log("Expected events on Base:");
-        console.log("1. PartReceived(intentId, 1, usdtAmount) - LP's USDT arrived");
-        console.log("2. PartReceived(intentId, 2, usdcAmount) - Trader's USDC arrived");
-        console.log("3. BothPartsReceived(intentId, usdcAmount, usdtAmount)");
+        console.log("1. PartReceived(intentId, 1, tokenOutAmount) - LP's rUSD arrived");
+        console.log("2. PartReceived(intentId, 2, tokenInAmount) - Trader's USDT arrived");
+        console.log("3. BothPartsReceived(intentId, tokenInAmount, tokenOutAmount)");
         console.log("4. SwapExecuted(intentId, trader, amountIn, amountOut)");
         console.log("");
         console.log("Finally: Tokens will be bridged back to World Chain");
-        console.log("- Trader receives USDT");
-        console.log("- LP receives USDC");
+        console.log("- Trader receives rUSD");
+        console.log("- LP receives USDT");
 
         vm.stopBroadcast();
     }
