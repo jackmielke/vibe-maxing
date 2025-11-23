@@ -76,17 +76,18 @@ interface IStableswapCallback {
 /**
  * @title CrossChainSwapComposer
  * @notice Executes cross-chain swaps after DUAL tokens arrive via Stargate
+ * @dev Deployed per token pair (e.g., one for USDT/rUSD, another for USDC/DAI)
  *
  * Architecture (Intent-Based with Dual Bridge):
  * 1. IntentPool on World sends TWO token transfers to Base:
- *    - Part 1: LP's USDT (tokenOut for trader)
- *    - Part 2: Trader's USDC (tokenIn for swap)
+ *    - Part 1: LP's tokenOut (e.g., rUSD for trader)
+ *    - Part 2: Trader's tokenIn (e.g., USDT for swap)
  * 2. This contract waits for BOTH tokens to arrive
  * 3. When both arrived → Execute swap using AMM
- * 4. During swap: pullOnBehalfOf(LP's USDT) + pushOnBehalfOf(Trader's USDC)
+ * 4. During swap: pullOnBehalfOf(LP's tokenOut) + pushOnBehalfOf(Trader's tokenIn)
  * 5. Send both output tokens back to World:
- *    - USDT → Trader
- *    - USDC → LP (swap proceeds)
+ *    - tokenOut → Trader
+ *    - tokenIn → LP (swap proceeds)
  *
  * Flow:
  * World: Intent matched → Dual Stargate.send()
@@ -108,13 +109,13 @@ contract CrossChainSwapComposer is ILayerZeroComposer, IStableswapCallback {
     /// @notice LayerZero Endpoint (trusted to invoke lzCompose)
     address public immutable ENDPOINT;
 
-    /// @notice Stargate OFT for tokenIn (USDC)
+    /// @notice Stargate OFT for tokenIn (e.g., USDT)
     address public immutable OFT_IN;
 
     /// @notice Underlying ERC20 for tokenIn
     address public immutable TOKEN_IN;
 
-    /// @notice Stargate OFT for tokenOut (USDT)
+    /// @notice Stargate OFT for tokenOut (e.g., rUSD)
     address public immutable OFT_OUT;
 
     /// @notice Underlying ERC20 for tokenOut
@@ -126,8 +127,8 @@ contract CrossChainSwapComposer is ILayerZeroComposer, IStableswapCallback {
 
     /// @notice Tracks dual token arrivals for each intent
     struct DualTransfer {
-        uint256 usdtAmount; // LP's USDT (part 1)
-        uint256 usdcAmount; // Trader's USDC (part 2)
+        uint256 tokenOutAmount; // LP's tokenOut (part 1, e.g., rUSD)
+        uint256 tokenInAmount; // Trader's tokenIn (part 2, e.g., USDT)
         address trader;
         address LP;
         bytes32 strategyHash;
@@ -159,7 +160,7 @@ contract CrossChainSwapComposer is ILayerZeroComposer, IStableswapCallback {
     event SwapFailed(bytes32 indexed guid, address trader, uint256 amountIn);
     event Refunded(bytes32 indexed guid, address trader, uint256 amount);
     event PartReceived(bytes32 indexed intentId, uint8 part, uint256 amount);
-    event BothPartsReceived(bytes32 indexed intentId, uint256 usdcAmount, uint256 usdtAmount);
+    event BothPartsReceived(bytes32 indexed intentId, uint256 tokenInAmount, uint256 tokenOutAmount);
 
     // ══════════════════════════════════════════════════════════════════════════════
     // Constructor
@@ -209,8 +210,8 @@ contract CrossChainSwapComposer is ILayerZeroComposer, IStableswapCallback {
      *      1. Part 1: LP's USDT arrives
      *      2. Part 2: Trader's USDC arrives
      *
-     *      composeMsg for Part 1: (uint8(1), bytes32 intentId, address LP, uint256 usdtAmount)
-     *      composeMsg for Part 2: (uint8(2), bytes32 intentId, address trader, address LP, uint256 usdcAmount, bytes32 strategyHash, uint256 minOut)
+     *      composeMsg for Part 1: (uint8(1), bytes32 intentId, address LP, uint256 tokenOutAmount)
+     *      composeMsg for Part 2: (uint8(2), bytes32 intentId, address trader, address LP, uint256 tokenInAmount, bytes32 strategyHash, uint256 minOut)
      *
      * @param _sender Address of the Stargate OFT that sent tokens
      * @param _guid Message identifier (unique per transfer)
@@ -237,12 +238,12 @@ contract CrossChainSwapComposer is ILayerZeroComposer, IStableswapCallback {
 
         if (part == 1) {
             // Part 1: LP's USDT (tokenOut)
-            (, bytes32 intentId, address LP, uint256 usdtAmount) = abi.decode(
+            (, bytes32 intentId, address LP, uint256 tokenOutAmount) = abi.decode(
                 composeMsg,
                 (uint8, bytes32, address, uint256)
             );
 
-            _handlePart1(intentId, LP, usdtAmount, srcEid);
+            _handlePart1(intentId, LP, tokenOutAmount, srcEid);
         } else if (part == 2) {
             // Part 2: Trader's USDC (tokenIn)
             (
@@ -250,12 +251,12 @@ contract CrossChainSwapComposer is ILayerZeroComposer, IStableswapCallback {
                 bytes32 intentId,
                 address trader,
                 address LP,
-                uint256 usdcAmount,
+                uint256 tokenInAmount,
                 bytes32 strategyHash,
                 uint256 minOut
             ) = abi.decode(composeMsg, (uint8, bytes32, address, address, uint256, bytes32, uint256));
 
-            _handlePart2(intentId, trader, LP, usdcAmount, strategyHash, minOut, srcEid);
+            _handlePart2(intentId, trader, LP, tokenInAmount, strategyHash, minOut, srcEid);
         } else {
             revert InvalidPart(part);
         }
@@ -264,13 +265,13 @@ contract CrossChainSwapComposer is ILayerZeroComposer, IStableswapCallback {
     /**
      * @notice Handle Part 1: LP's USDT arrival
      */
-    function _handlePart1(bytes32 intentId, address LP, uint256 usdtAmount, uint32 srcEid) internal {
+    function _handlePart1(bytes32 intentId, address LP, uint256 tokenOutAmount, uint32 srcEid) internal {
         DualTransfer storage transfer = pendingTransfers[intentId];
 
         // Initialize or validate
         if (transfer.partsReceived == 0) {
             transfer.LP = LP;
-            transfer.usdtAmount = usdtAmount;
+            transfer.tokenOutAmount = tokenOutAmount;
             transfer.srcEid = srcEid;
             transfer.partsReceived = 1;
         } else {
@@ -278,7 +279,7 @@ contract CrossChainSwapComposer is ILayerZeroComposer, IStableswapCallback {
             transfer.partsReceived += 1;
         }
 
-        emit PartReceived(intentId, 1, usdtAmount);
+        emit PartReceived(intentId, 1, tokenOutAmount);
 
         // If both parts arrived, execute swap
         if (transfer.partsReceived == 2) {
@@ -287,13 +288,13 @@ contract CrossChainSwapComposer is ILayerZeroComposer, IStableswapCallback {
     }
 
     /**
-     * @notice Handle Part 2: Trader's USDC arrival
+     * @notice Handle Part 2: Trader's tokenIn arrival
      */
     function _handlePart2(
         bytes32 intentId,
         address trader,
         address LP,
-        uint256 usdcAmount,
+        uint256 tokenInAmount,
         bytes32 strategyHash,
         uint256 minOut,
         uint32 srcEid
@@ -304,7 +305,7 @@ contract CrossChainSwapComposer is ILayerZeroComposer, IStableswapCallback {
         if (transfer.partsReceived == 0) {
             transfer.trader = trader;
             transfer.LP = LP;
-            transfer.usdcAmount = usdcAmount;
+            transfer.tokenInAmount = tokenInAmount;
             transfer.strategyHash = strategyHash;
             transfer.minAmountOut = minOut;
             transfer.srcEid = srcEid;
@@ -315,7 +316,7 @@ contract CrossChainSwapComposer is ILayerZeroComposer, IStableswapCallback {
             transfer.partsReceived += 1;
         }
 
-        emit PartReceived(intentId, 2, usdcAmount);
+        emit PartReceived(intentId, 2, tokenInAmount);
 
         // If both parts arrived, execute swap
         if (transfer.partsReceived == 2) {
@@ -331,7 +332,7 @@ contract CrossChainSwapComposer is ILayerZeroComposer, IStableswapCallback {
 
         if (transfer.partsReceived != 2) revert IntentAlreadyProcessed(intentId);
 
-        emit BothPartsReceived(intentId, transfer.usdcAmount, transfer.usdtAmount);
+        emit BothPartsReceived(intentId, transfer.tokenInAmount, transfer.tokenOutAmount);
 
         // Clear storage to prevent re-execution
         delete pendingTransfers[intentId];
@@ -342,7 +343,7 @@ contract CrossChainSwapComposer is ILayerZeroComposer, IStableswapCallback {
         } catch {
             // Refund both parties on failure
             _refundBothParties(transfer);
-            emit SwapFailed(intentId, transfer.trader, transfer.usdcAmount);
+            emit SwapFailed(intentId, transfer.trader, transfer.tokenInAmount);
         }
     }
 
@@ -365,24 +366,24 @@ contract CrossChainSwapComposer is ILayerZeroComposer, IStableswapCallback {
         bool zeroForOne = TOKEN_IN == strategy.token0;
 
         // Execute swap
-        // This will trigger stableswapCallback() where we push trader's USDC
+        // This will trigger stableswapCallback() where we push trader's tokenIn
         uint256 amountOut = AMM.swapExactIn(
             strategy,
             zeroForOne,
-            transfer.usdcAmount,
+            transfer.tokenInAmount,
             transfer.minAmountOut,
             address(this), // Receive output here
             abi.encode(intentId, transfer.trader, transfer.LP, transfer.strategyHash)
         );
 
-        emit SwapExecuted(intentId, transfer.trader, transfer.usdcAmount, amountOut);
+        emit SwapExecuted(intentId, transfer.trader, transfer.tokenInAmount, amountOut);
 
-        // Send USDT to trader on World Chain
+        // Send tokenOut to trader on World Chain
         _sendTokenToWorld(TOKEN_OUT, transfer.trader, amountOut, transfer.srcEid);
 
-        // Send USDC (swap proceeds) to LP on World Chain
-        // LP gets back the trader's USDC that was swapped
-        _sendTokenToWorld(TOKEN_IN, transfer.LP, transfer.usdcAmount, transfer.srcEid);
+        // Send tokenIn (swap proceeds) to LP on World Chain
+        // LP gets back the trader's tokenIn that was swapped
+        _sendTokenToWorld(TOKEN_IN, transfer.LP, transfer.tokenInAmount, transfer.srcEid);
     }
 
     // ══════════════════════════════════════════════════════════════════════════════
@@ -448,14 +449,14 @@ contract CrossChainSwapComposer is ILayerZeroComposer, IStableswapCallback {
      * @notice Refund both parties if swap fails
      */
     function _refundBothParties(DualTransfer memory transfer) internal {
-        // Refund USDT to LP
-        if (transfer.usdtAmount > 0) {
-            _sendTokenToWorld(TOKEN_OUT, transfer.LP, transfer.usdtAmount, transfer.srcEid);
+        // Refund tokenOut to LP
+        if (transfer.tokenOutAmount > 0) {
+            _sendTokenToWorld(TOKEN_OUT, transfer.LP, transfer.tokenOutAmount, transfer.srcEid);
         }
 
-        // Refund USDC to trader
-        if (transfer.usdcAmount > 0) {
-            _sendTokenToWorld(TOKEN_IN, transfer.trader, transfer.usdcAmount, transfer.srcEid);
+        // Refund tokenIn to trader
+        if (transfer.tokenInAmount > 0) {
+            _sendTokenToWorld(TOKEN_IN, transfer.trader, transfer.tokenInAmount, transfer.srcEid);
         }
     }
 

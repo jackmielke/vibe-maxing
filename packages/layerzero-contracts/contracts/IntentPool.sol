@@ -10,10 +10,11 @@ import { OptionsBuilder } from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/lib
 /**
  * @title IntentPool
  * @notice Matches swap intents between traders and LPs on World Chain
+ * @dev Deployed per token pair (e.g., one for USDT/rUSD, another for USDC/DAI)
  *
  * Flow:
- * 1. Trader submits intent and locks tokenIn (USDC)
- * 2. LP fulfills intent and locks tokenOut (USDT)
+ * 1. Trader submits intent and locks tokenIn (e.g., USDT)
+ * 2. LP fulfills intent and locks tokenOut (e.g., rUSD)
  * 3. Anyone triggers settlement → dual Stargate send to Base
  * 4. CrossChainSwapComposer executes swap on Base
  * 5. Both parties receive their output tokens back
@@ -67,9 +68,9 @@ contract IntentPool is Ownable {
     /// @notice CrossChainSwapComposer address on Base
     address public composer;
 
-    /// @notice Stargate OFT addresses
-    address public stargateUSDC;
-    address public stargateUSDT;
+    /// @notice Stargate OFT addresses for token pair
+    address public stargateTokenA; // OFT for tokenIn (e.g., USDT)
+    address public stargateTokenB; // OFT for tokenOut (e.g., rUSD)
 
     /// @notice Counter for generating intent IDs
     uint256 public intentCounter;
@@ -89,7 +90,7 @@ contract IntentPool is Ownable {
 
     event IntentFulfilled(bytes32 indexed intentId, address indexed LP, uint256 actualOut);
 
-    event IntentSettling(bytes32 indexed intentId, uint256 usdcAmount, uint256 usdtAmount);
+    event IntentSettling(bytes32 indexed intentId, uint256 tokenAAmount, uint256 tokenBAmount);
 
     event IntentCancelled(bytes32 indexed intentId, string reason);
 
@@ -97,11 +98,16 @@ contract IntentPool is Ownable {
     // Constructor
     // ══════════════════════════════════════════════════════════════════════════════
 
-    constructor(uint32 _baseEid, address _composer, address _stargateUSDC, address _stargateUSDT) Ownable(msg.sender) {
+    constructor(
+        uint32 _baseEid,
+        address _composer,
+        address _stargateTokenA,
+        address _stargateTokenB
+    ) Ownable(msg.sender) {
         baseEid = _baseEid;
         composer = _composer;
-        stargateUSDC = _stargateUSDC;
-        stargateUSDT = _stargateUSDT;
+        stargateTokenA = _stargateTokenA;
+        stargateTokenB = _stargateTokenB;
     }
 
     // ══════════════════════════════════════════════════════════════════════════════
@@ -127,8 +133,8 @@ contract IntentPool is Ownable {
     /**
      * @notice Trader submits a swap intent
      * @param strategyHash Hash of the strategy to swap against
-     * @param tokenIn Input token address (USDC)
-     * @param tokenOut Output token address (USDT)
+     * @param tokenIn Input token address (e.g., USDT)
+     * @param tokenOut Output token address (e.g., rUSD)
      * @param amountIn Amount of tokenIn to swap
      * @param expectedOut Expected output from quote (no slippage)
      * @param minOut Minimum acceptable output (with slippage)
@@ -223,7 +229,7 @@ contract IntentPool is Ownable {
         intent.status = IntentStatus.SETTLING;
 
         // Build compose messages for both token sends
-        // Part 1: LP's tokenOut (USDT)
+        // Part 1: LP's tokenOut (e.g., rUSD)
         bytes memory composeMsg1 = abi.encode(
             uint8(1), // Part 1
             intentId,
@@ -231,7 +237,7 @@ contract IntentPool is Ownable {
             intent.actualOut
         );
 
-        // Part 2: Trader's tokenIn (USDC) - includes full intent data
+        // Part 2: Trader's tokenIn (e.g., USDT) - includes full intent data
         bytes memory composeMsg2 = abi.encode(
             uint8(2), // Part 2
             intentId,
@@ -242,47 +248,58 @@ contract IntentPool is Ownable {
             intent.minOut
         );
 
-        // Build LayerZero options (note: addExecutorComposeOption, NOT addExecutorLzComposeOption)
-        bytes memory options = OptionsBuilder.newOptions().addExecutorComposeOption(0, composeGasLimit, 0);
-
-        // Calculate fee split (50/50)
-        uint256 feePerSend = msg.value / 2;
+        // Build LayerZero options
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzComposeOption(0, composeGasLimit, 0);
 
         // Approve Stargate OFTs
-        IERC20(intent.tokenOut).approve(stargateUSDT, intent.actualOut);
-        IERC20(intent.tokenIn).approve(stargateUSDC, intent.amountIn);
+        IERC20(intent.tokenOut).approve(stargateTokenB, intent.actualOut);
+        IERC20(intent.tokenIn).approve(stargateTokenA, intent.amountIn);
 
-        // Send Part 1: LP's USDT
+        // Build SendParams for both transfers
         SendParam memory sendParam1 = SendParam({
             dstEid: baseEid,
             to: bytes32(uint256(uint160(composer))),
             amountLD: intent.actualOut,
-            minAmountLD: intent.actualOut,
+            minAmountLD: intent.actualOut, // Simplified for MVP
             extraOptions: options,
             composeMsg: composeMsg1,
             oftCmd: ""
         });
 
-        IOFT(stargateUSDT).send{ value: feePerSend }(
-            sendParam1,
-            MessagingFee({ nativeFee: feePerSend, lzTokenFee: 0 }),
-            msg.sender
-        );
-
-        // Send Part 2: Trader's USDC
         SendParam memory sendParam2 = SendParam({
             dstEid: baseEid,
             to: bytes32(uint256(uint160(composer))),
             amountLD: intent.amountIn,
-            minAmountLD: intent.amountIn,
+            minAmountLD: intent.amountIn, // Simplified for MVP
             extraOptions: options,
             composeMsg: composeMsg2,
             oftCmd: ""
         });
 
-        IOFT(stargateUSDC).send{ value: feePerSend }(
+        // User must call quoteSettlementFee() first to get the required fee
+        // Then send that amount (or more with buffer) as msg.value
+        // We quote again to determine the proportional split between the two sends
+        MessagingFee memory fee1 = IOFT(stargateTokenB).quoteSend(sendParam1, false);
+        MessagingFee memory fee2 = IOFT(stargateTokenA).quoteSend(sendParam2, false);
+
+        uint256 totalQuotedFee = fee1.nativeFee + fee2.nativeFee;
+
+        // Split msg.value proportionally based on quoted fees
+        // User should have sent >= totalQuotedFee (recommended: 120% for buffer)
+        uint256 value1 = totalQuotedFee > 0 ? (msg.value * fee1.nativeFee) / totalQuotedFee : msg.value / 2;
+        uint256 value2 = msg.value - value1;
+
+        // Send Part 1: LP's tokenOut with proportional fee
+        IOFT(stargateTokenB).send{ value: value1 }(
+            sendParam1,
+            MessagingFee({ nativeFee: value1, lzTokenFee: 0 }),
+            msg.sender
+        );
+
+        // Send Part 2: Trader's tokenIn with proportional fee
+        IOFT(stargateTokenA).send{ value: value2 }(
             sendParam2,
-            MessagingFee({ nativeFee: feePerSend, lzTokenFee: 0 }),
+            MessagingFee({ nativeFee: value2, lzTokenFee: 0 }),
             msg.sender
         );
 
@@ -341,7 +358,7 @@ contract IntentPool is Ownable {
 
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzComposeOption(0, composeGasLimit, 0);
 
-        // Quote for USDT send
+        // Quote for tokenOut send
         SendParam memory sendParam1 = SendParam({
             dstEid: baseEid,
             to: bytes32(uint256(uint160(composer))),
@@ -352,9 +369,9 @@ contract IntentPool is Ownable {
             oftCmd: ""
         });
 
-        MessagingFee memory fee1 = IOFT(stargateUSDT).quoteSend(sendParam1, false);
+        MessagingFee memory fee1 = IOFT(stargateTokenB).quoteSend(sendParam1, false);
 
-        // Quote for USDC send
+        // Quote for tokenIn send
         SendParam memory sendParam2 = SendParam({
             dstEid: baseEid,
             to: bytes32(uint256(uint160(composer))),
@@ -365,7 +382,7 @@ contract IntentPool is Ownable {
             oftCmd: ""
         });
 
-        MessagingFee memory fee2 = IOFT(stargateUSDC).quoteSend(sendParam2, false);
+        MessagingFee memory fee2 = IOFT(stargateTokenA).quoteSend(sendParam2, false);
 
         totalFee = fee1.nativeFee + fee2.nativeFee;
     }

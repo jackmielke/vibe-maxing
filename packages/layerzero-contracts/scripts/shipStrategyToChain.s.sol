@@ -112,13 +112,13 @@ contract ShipStrategyToChainScript is Script {
 
         // Canonical token IDs (chain-agnostic)
         bytes32[] memory tokenIds = new bytes32[](2);
-        tokenIds[0] = keccak256("USDC");
-        tokenIds[1] = keccak256("USDT");
+        tokenIds[0] = keccak256("USDT");
+        tokenIds[1] = keccak256("rUSD");
 
         // Virtual liquidity amounts (for cross-chain bookkeeping)
         uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 2e6; // 2 USDC (6 decimals)
-        amounts[1] = 2e6; // 2 USDT (6 decimals)
+        amounts[0] = 2e6; // 2 USDT (6 decimals)
+        amounts[1] = 2e18; // 2 rUSD (18 decimals)
 
         // Use deterministic salt for consistency (matching mainnet deployment)
         bytes32 salt = bytes32(0);
@@ -129,7 +129,7 @@ contract ShipStrategyToChainScript is Script {
                 token0Id: tokenIds[0],
                 token1Id: tokenIds[1],
                 feeBps: 4, // 0.04% fee (same as mainnet)
-                amplificaxtionFactor: 100, // High A for stablecoins
+                amplificationFactor: 100, // High A for stablecoins
                 salt: salt
             })
         );
@@ -137,8 +137,8 @@ contract ShipStrategyToChainScript is Script {
         bytes32 strategyHash = keccak256(strategyBytes);
 
         console.log("Strategy Hash:", vm.toString(strategyHash));
-        console.log("Token 0 (USDC):", amounts[0]);
-        console.log("Token 1 (USDT):", amounts[1]);
+        console.log("Token 0 (USDT):", amounts[0]);
+        console.log("Token 1 (rUSD):", amounts[1]);
         console.log("Fee: 4 bps (0.04%)");
         console.log("Amplification Factor: 100");
         console.log("Salt:", vm.toString(salt));
@@ -158,7 +158,7 @@ contract ShipStrategyToChainScript is Script {
             dstApp,
             strategyBytes,
             tokenIds,
-            amounts,xx
+            amounts,
             options,
             false
         );
