@@ -7,6 +7,8 @@ import { MarketMakersTab } from "@/components/market-makers-tab"
 import { SwapTab } from "@/components/swap-tab"
 import { LayoutGrid, ArrowLeftRight, HomeIcon, Zap, Globe, Layers } from "lucide-react"
 import { DotLoader } from "@/components/ui/dot-loader"
+import MiniKitProvider from "@/components/MiniKitProvider"
+import WorldIDAuth from "@/components/WorldIDAuth"
 import "./index.css"
 
 const queryClient = new QueryClient()
@@ -14,6 +16,16 @@ const queryClient = new QueryClient()
 const App = () => {
   const [activeTab, setActiveTab] = useState<"home" | "market-makers" | "swap">("home")
   const [showSplash, setShowSplash] = useState(true)
+  const [isVerified, setIsVerified] = useState(false)
+
+  useEffect(() => {
+    // Check if user is already verified
+    const authData = localStorage.getItem('worldid_auth')
+    if (authData) {
+      const { verified } = JSON.parse(authData)
+      setIsVerified(verified)
+    }
+  }, [])
 
   const game = [
     [14, 7, 0, 8, 6, 13, 20],
@@ -42,31 +54,34 @@ const App = () => {
 
   if (showSplash) {
     return (
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black space-bg">
-            <div className="relative z-10 flex flex-col items-center gap-8 animate-in fade-in zoom-in duration-700">
-              <h1 className="text-4xl md:text-6xl font-bold tracking-tighter text-white font-space uppercase">AquaZero</h1>
-              <DotLoader
-                frames={game}
-                className="gap-1 scale-150"
-                dotClassName="bg-white/15 [&.active]:bg-white size-2"
-                duration={80}
-              />
+      <MiniKitProvider>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black space-bg">
+              <div className="relative z-10 flex flex-col items-center gap-8 animate-in fade-in zoom-in duration-700">
+                <h1 className="text-4xl md:text-6xl font-bold tracking-tighter text-white font-space uppercase">AquaZero</h1>
+                <DotLoader
+                  frames={game}
+                  className="gap-1 scale-150"
+                  dotClassName="bg-white/15 [&.active]:bg-white size-2"
+                  duration={80}
+                />
+              </div>
             </div>
-          </div>
-        </TooltipProvider>
-      </QueryClientProvider>
+          </TooltipProvider>
+        </QueryClientProvider>
+      </MiniKitProvider>
     )
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
+    <MiniKitProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
         <main className="min-h-screen bg-black text-white font-sans space-bg pb-24 md:pb-0 md:pl-64 relative overflow-hidden">
           {/* Desktop Sidebar */}
           <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-64 bg-black border-r-2 border-white flex-col z-50">
@@ -162,7 +177,7 @@ const App = () => {
                     different blockchains simultaneously.
                   </p>
 
-                  <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex flex-col md:flex-row gap-4 mb-8">
                     <button
                       onClick={() => setActiveTab("market-makers")}
                       className="bg-white text-black border-2 border-white px-8 py-4 text-lg font-bold uppercase tracking-wider shadow-[6px_6px_0px_0px_#333] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#333] transition-all"
@@ -172,6 +187,28 @@ const App = () => {
                     <button className="bg-transparent text-white border-2 border-white px-8 py-4 text-lg font-bold uppercase tracking-wider hover:bg-white hover:text-black transition-colors">
                       Read Docs
                     </button>
+                  </div>
+
+                  {/* World ID Auth Section */}
+                  <div className="p-6 neo-card inline-block">
+                    <div className="mb-4">
+                      <h3 className="text-xl font-bold text-white mb-2">Connect with World ID</h3>
+                      <p className="text-sm text-gray-400">Verify your humanity to access the protocol</p>
+                    </div>
+                    <WorldIDAuth
+                      onSuccess={(nullifierHash) => {
+                        console.log('Verified!', nullifierHash)
+                        setIsVerified(true)
+                      }}
+                      onError={(error) => {
+                        console.error('Verification failed:', error)
+                      }}
+                    />
+                    {isVerified && (
+                      <div className="mt-4 p-3 bg-green-950 border-2 border-green-500 rounded text-green-200 text-sm font-mono">
+                        ✓ Verified with World ID
+                      </div>
+                    )}
                   </div>
                 </section>
 
@@ -304,8 +341,9 @@ const App = () => {
             </div>
           </nav>
         </main>
-      </TooltipProvider>
-    </QueryClientProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </MiniKitProvider>
   )
 }
 
